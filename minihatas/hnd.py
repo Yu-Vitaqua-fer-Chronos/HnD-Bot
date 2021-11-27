@@ -111,6 +111,16 @@ async def reload_dm_sheet():
     await dmsheet.reload()
     yield "DM sheet reloaded!"
 
+@client.interactions(guild=guilds)
+async def reload_char_sheet(event):
+    """Reloads your own sheet"""
+    sheet = data.get(event.user.id)
+    if not sheet:
+        yield "No character sheet linked! Link a character sheet with the link command!"
+        return
+    yield f"Reloading `{sheet.name}`'s character sheet..."
+    await sheet.load()
+    yield f"`{sheet.name}`'s character sheet has been reloaded!"
 
 # Autocomplete
 @roll.autocomplete('stat')
