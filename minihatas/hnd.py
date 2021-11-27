@@ -1,5 +1,7 @@
 from os import environ
 
+from hata import User
+
 from ext.utils import DMSheet
 
 # Initialise variables
@@ -117,6 +119,19 @@ async def reload_char_sheet(event):
     sheet = data.get(event.user.id)
     if not sheet:
         yield "No character sheet linked! Link a character sheet with the link command!"
+        return
+    yield f"Reloading `{sheet.name}`'s character sheet..."
+    await sheet.load()
+    yield f"`{sheet.name}`'s character sheet has been reloaded!"
+
+@client.interactions(guild=guilds)
+async def force_reload_char_sheet(event, user:User):
+    if not client.is_owner(event.user):
+        yield "You don't have access to this command!"
+        return
+    sheet = data.get(user.id)
+    if not sheet:
+        yield "No character sheet linked!"
         return
     yield f"Reloading `{sheet.name}`'s character sheet..."
     await sheet.load()
