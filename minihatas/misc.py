@@ -20,10 +20,11 @@ async def git_pull(event, reload_on_success:bool=True):
     elif code == 1:
         result = "Failed"
     if not reload_on_success:
-        yield f"Exited with exit code `code`! ({result})"
+        yield f"Exited with exit code `{code}`! ({result})"
         return
     if code == 0 and reload_on_success:
-        yield f"Exited with exit code `code`! Reloading all minihatas now..."
+        yield f"Exited with exit code `{code}`! Reloading all minihatas now..."
         EXTENSION_LOADER.reload_all()
+        yield "Reloaded all minihatas!"
         return
-    yield f"Exited with exit code `code`! ({result})"
+    yield f"Exited with exit code `{code}`! ({result})"
