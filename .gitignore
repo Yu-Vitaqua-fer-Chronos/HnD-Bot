@@ -3,3 +3,5 @@ run.py
 config.yaml
 userdata.yaml
 **/__pycache__/
+persistance.js
+persist.js
