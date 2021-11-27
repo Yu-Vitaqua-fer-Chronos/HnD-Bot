@@ -1,5 +1,5 @@
-git+https://github.com/dgilman/gspread_asyncio
 git+https://github.com/HuyaneMatsu/Hata
+gspread_asyncio
 fastapi
 uvicorn[standard]
 ruamel.yaml
