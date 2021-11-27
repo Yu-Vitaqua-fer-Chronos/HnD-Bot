@@ -1,0 +1,4 @@
+git+https://github.com/dgilman/gspread_asyncio
+git+https://github.com/HuyaneMatsu/Hata
+ruamel.yaml
+d20
