@@ -1,10 +1,11 @@
-from os import environ, system as syscall
+from os import environ
 
 from hata import Client, Guild
 from hata.ext import asyncio
 from hata.ext.extension_loader import EXTENSION_LOADER
 
-from utils import Data
+from ext.utils import Data
+from ext.web import app
 
 client = Client(environ['TOKEN'], extensions=('slash'))
 guilds = (Guild.precreate(902668029115138078),)

@@ -1,4 +1,6 @@
 git+https://github.com/dgilman/gspread_asyncio
 git+https://github.com/HuyaneMatsu/Hata
+fastapi
+uvicorn[standard]
 ruamel.yaml
 d20

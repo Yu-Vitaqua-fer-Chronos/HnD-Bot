@@ -1,6 +1,6 @@
 from os import environ
 
-from utils import DMSheet
+from ext.utils import DMSheet
 
 # Initialise variables
 dmsheet = DMSheet(environ['DM_SHEET'])
