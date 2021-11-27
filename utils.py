@@ -277,5 +277,3 @@ class Data(UserDict):
         self[acc] = CharSheet(url, prnsoverride, vrbsoverride)
         self.force_save()
         return True
-
-data = Data()

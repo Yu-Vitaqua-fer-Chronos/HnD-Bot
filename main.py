@@ -4,7 +4,7 @@ from hata import Client, Guild
 from hata.ext import asyncio
 from hata.ext.extension_loader import EXTENSION_LOADER
 
-from utils import data
+from utils import Data
 
 client = Client(environ['TOKEN'], extensions=('slash'))
 guilds = (Guild.precreate(902668029115138078),)
@@ -15,6 +15,8 @@ try:
 except FileNotFoundError:
     with open('userdata.yaml', 'w+') as f:
         f.write("{}")
+
+data = Data()
 
 # Add default variables
 EXTENSION_LOADER.add_default_variables(
