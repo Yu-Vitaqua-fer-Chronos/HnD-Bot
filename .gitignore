@@ -2,4 +2,5 @@ credentials.json
 run.py
 config.yaml
 characters.yaml
+items.yaml
 **/__pycache__/

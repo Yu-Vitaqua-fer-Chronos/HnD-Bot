@@ -350,7 +350,7 @@ class Inventory(object):
 
 
 class Character(object):
-    def __init__(self, name, race, eyes, hair, age, gender, verbs, pronouns, height, weight, level, fpm, yen, base, mods):
+    def __init__(self, name, race, eyes, hair, age, gender, verbs, pronouns, height, weight, level, fpm, image, yen, base, mods):
         # Player desc stuff
         self.name = name
         self.race = race
@@ -397,6 +397,7 @@ class Character(object):
           sheet.weight,
           sheet.level,
           sheet.fpm,
+          sheet.image,
           sheet.stats.ty,
           SN(
             str=sheet.stats.str,
@@ -519,9 +520,14 @@ class Data(UserDict): # Subclassing UserDict (an implementation of a normal pyth
         self.force_save() # So it isn't deleted after a restart call force save
         return True # Return True to indicate success
 
-
-
-
+    def new_item(self, name, weight, type="I"):
+        try:
+            self.data['items']
+        except KeyError:
+            self.data = []
+        for i in self.data['items']:
+            if name.title() == i.name.title():
+                
 
 
 

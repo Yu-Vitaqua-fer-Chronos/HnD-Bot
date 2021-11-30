@@ -18,13 +18,22 @@ except FileNotFoundError:
     with open('characters.yaml', 'w+') as f:
         f.write("{}")
 
-data = Data()
+try:
+    with open('items.yaml') as f:
+        pass
+except FileNotFoundError:
+    with open('items.yaml', 'w+') as f:
+        f.write("{}")
+
+chars = Data('characters.yaml')
+items = Data('items.yaml')
 
 # Add default variables
 EXTENSION_LOADER.add_default_variables(
   client=client,
   guilds=guilds,
-  data=data,
+  chars=chars,
+  items=items,
 )
 EXTENSION_LOADER.add('minihatas')
 EXTENSION_LOADER.load_all()
