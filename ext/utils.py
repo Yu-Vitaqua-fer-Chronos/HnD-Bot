@@ -347,8 +347,8 @@ class Character(object):
         self.hair = hair
         self.age = age
         self.gender = gender
-        self.verbs = verbs.lower().split('/')
-        self.pronouns = pronouns.lower().split('/')
+        self.verbs = verbs
+        self.pronouns = pronouns
         self.height = height
         self.weight = weight
         self.level = level
