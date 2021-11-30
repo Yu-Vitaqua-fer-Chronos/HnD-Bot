@@ -1,12 +1,8 @@
-from os import environ
-
 from hata import User
 
-from ext.utils import DMSheet, InvalidSheetException, roll
+from ext.utils import dmsheet, InvalidSheetException, roll
 
 # Initialise variables
-dmsheet = DMSheet(environ['DM_SHEET'])
-
 BASE_STATS = ( # Autocomplete values
   "Undefined",
   "Strength",
@@ -102,11 +98,23 @@ async def monster_dex(event, monster:str):
     yield f"```yaml\n{m}```"
 
 @client.interactions(guild=guilds)
-async def reload_dm_sheet():
+async def reload_dm_sheet(event):
     """This command reloads the DM sheet"""
+    if not dmsheet.is_dm(event.user.id):
+        yield "You're not a DM and don't have access to this command!"
+        return
     yield "Reloading DM sheet..."
     await dmsheet.reload()
     yield "DM sheet reloaded!"
+
+
+@client.interactions(guild=guilds)
+async def add_item(event, name:('str', 'Name of the item you wanna add')):
+    """Allows the DM to add an item to the campaign"""
+    if not dmsheet.is_dm(event.user.id):
+        yield "You're not a DM and don't have access to this command!"
+        return
+    pass # Not implemented yet
 
 
 # Autocomplete

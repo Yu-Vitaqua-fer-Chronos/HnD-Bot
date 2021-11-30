@@ -232,12 +232,23 @@ class DMSheet(object):
         doc = await agc.open_by_url(self.url)
         self.fs = GSheet(await doc.worksheet('General DM Sheet'))
         self.md = GSheet(await doc.worksheet('MonsterDex')) # MonsterDex sheet, allows the DM to easily add and remove monsters so they can be looked up via the bot
+        self.st = GSheet(await doc.worksheet('Settings')) # Settings sheet
         await self.fs.init()
         await self.md.init()
+        await self.st.init()
         MONSTERS = self.md.value_range("A2:A322")
         self.MONSTER_LIST = [MONSTER.title() for MONSTER in MONSTERS]
         self.monsters = dict(zip(self.MONSTER_LIST, self.md.value_range("B2:B322"))) # Zip the values together into an easy to lookup dict
 
+        self.DMUIDs = [int(id) for id in self.st.value_range("sD2:D8")]
+
+    def is_dm(self, id):
+        if id in self.DMUIDs:
+            return True
+        return False
+
+
+dmsheet = DMSheet(environ['DM_SHEET'])
 
 def roll(u, dice, mod): # Rolls the dice, u is the character the dice is rolling on, dice is the dice in the format `1d6` or `3d20`
     if isinstance(mod, str): # Check if the modifier is a string, if so, use acmap to look up the modifier value
@@ -272,11 +283,11 @@ class ItemProperties(object): # The properties an item has
 
 
 class Item(object):
-    def __init__(self, name, weight=1, props=None): # Weight is weight per object, in lbs
+    def __init__(self, name, weight=1, props=None, amount=1): # Weight is weight per object, in lbs
         self.name = name
         self.weight = weight # Weight just means encumberance
         self.props = props # Make it props so it's quicker to type
-        self.amount = 1
+        self.amount = amount
 
     def use(self, user, dice, target=None, mod=0):
         if not target:
@@ -470,10 +481,11 @@ RARITIES = ( # Valid item rarities for DM to make new items
 yaml.register_class(ItemProperties);yaml.register_class(Item);yaml.register_class(Arrow);yaml.register_class(PreciousMaterial);yaml.register_class(Inventory);yaml.register_class(Character)
 
 class Data(UserDict): # Subclassing UserDict (an implementation of a normal python dictionary that was *made* to be subclassed) so it can automatically load and save from files
-    def __init__(self, *args, **kwargs):
+    def __init__(self, file, *args, **kwargs):
         super().__init__(*args, **kwargs) # Initialise the superclass (UserDict) so everything is initialised
         self.lock = False
-        with open('characters.yaml') as f: # Open characters.yaml to load the data into the dict
+        self.file = file
+        with open(self.file) as f: # Open the yaml file to load the data into the dict
             tmp = yaml.load(f)
             if tmp:
                 self.data.update(tmp) # `data` points to the actual dict that is implemented in the UserDict code. Update just adds all values from characters.yaml into the current dict
@@ -486,7 +498,7 @@ class Data(UserDict): # Subclassing UserDict (an implementation of a normal pyth
             while self.lock:
                 pass
             self.lock = True
-            with open('characters.yaml', 'w+') as f:
+            with open(self.file, 'w+') as f:
                 yaml.dump(self.data, f)
             self.counter = 0
             self.lock = False
@@ -495,19 +507,17 @@ class Data(UserDict): # Subclassing UserDict (an implementation of a normal pyth
         while self.lock:
             pass
         self.lock = True
-        with open('characters.yaml', 'w+') as f:
+        with open(self.file, 'w+') as f:
             yaml.dump(self.data, f)
         self.counter = 0
         self.lock = False
 
-    async def new_character(self, url, acc, prnsoverride=None, vrbsoverride=None): # Creates the character and adds it to the dict
+    async def new_character(self, url, acc, prnsoverride=None, vrbsoverride=None): # Creates the character and adds it to the dict, only call this on characters.yaml
         if self.get(acc):
             return False # Returns False if the account already has a character sheet linked to it
         self[acc] = await Character.import_from_url(url, prnsoverride, vrbsoverride)
         self.force_save() # So it isn't deleted after a restart call force save
         return True # Return True to indicate success
-
-
 
 
 
