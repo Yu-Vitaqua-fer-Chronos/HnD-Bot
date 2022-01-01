@@ -4,5 +4,6 @@ ruamel.yaml
 yachalk
 fastapi
 uvicorn
+jinja2
 httpx
 d20
