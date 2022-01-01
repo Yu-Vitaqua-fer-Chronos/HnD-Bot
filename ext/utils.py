@@ -3,23 +3,25 @@ from types import SimpleNamespace as SN # Abbreviation for convinience
 from time import sleep
 from math import ceil
 from os import environ
-from json import loads
-import re
+from json import loads as jloads
+from re import compile as regcompile, search as regsearch
 
 import d20
 from ruamel.yaml import YAML
+from httpx import AsyncClient
 from gspread import SpreadsheetNotFound
 from gspread.utils import fill_gaps, a1_to_rowcol
 from gspread.exceptions import APIError
 import gspread_asyncio as gspread
 from google.oauth2.service_account import Credentials
+from yachalk import chalk
 
 yaml = YAML(typ='unsafe')
 yaml.register_class(SN)
-POS_RE = re.compile(r"([A-Z]+)(\d+)")
+POS_RE = regcompile(r"([A-Z]+)(\d+)")
 
 def get_creds():
-    creds = Credentials.from_service_account_info(loads(environ.get('CREDENTIALS_JSON')))
+    creds = Credentials.from_service_account_info(jloads(environ.get('CREDENTIALS_JSON')))
     scoped = creds.with_scopes([
       "https://spreadsheets.google.com/feeds",
       "https://www.googleapis.com/auth/spreadsheets",
@@ -55,6 +57,22 @@ class Size: # Encumbrance calc
     huge = 4
     gargantuan = 8
 
+class Logger(object):
+    @staticmethod
+    def info(name, *msg, sep=' '):
+        tmp = [str(i) for i in msg]
+        print(f"[{chalk.blue('INFO')}] {chalk.green(name)} ⟩ {sep.join(tmp)}")
+
+    @staticmethod
+    def debug(name, *msg, sep=' '):
+        if environ.get('DEBUG', False):
+            tmp = [str(i) for i in msg]
+            print(f"[{chalk.yellow('DEBUG')}] {chalk.green(name)} ⟩ {sep.join(tmp)}")
+
+    @staticmethod
+    def error(name, *msg, sep=' '):
+        tmp = [str(i) for i in msg]
+        print(f"[{chalk.bg_red.black('ERROR')}] {chalk.green(name)} ⟩ {sep.join(tmp)}")
 
 class GSheet(object): # GSheet implementation to easily access values
     def __init__(self, worksheet):
@@ -83,7 +101,7 @@ class GSheet(object): # GSheet implementation to easily access values
         if row > len(source) or col > len(source[row]):
             raise IndexError("Cell out of bounds.")
         value = source[row][col]
-        print(f"Cell {pos}: {value}")
+        debug('Cell', f"({pos}) - ({value})")
         return value
 
     def value(self, pos): # Grab the formatted value from the sheet
@@ -205,7 +223,14 @@ class CharSpreadsheet(object):
             if self.vrbsoverride:
                 self.verbs = self.vrbsoverride
 
-            self.image = self.fs.value("BC8").strip()
+            self.image = self.fs.unformatted_value("BC8")
+            if ',' in self.image:
+                self.image = self.image.replace(' ', '').split(',')[0]
+            if self.image.lower().startswith('=image('):
+                self.image = self.image[7:]
+            if self.image.endswith(')'):
+                self.image = self.image[:-1]
+            self.image = self.image.replace('\"', '').replace('"', '')
 
             self.fpm = int(self.fs.value("AV12")) # How many feet they can move
             self.spm = self.fpm / 5 #    How many squares can be moved per turn, since 5 feet is 1 square
@@ -320,9 +345,9 @@ class Arrow(Item):
 
 
 class PreciousMaterial(Item):
-    def __init__(self, name, value): # A type of item specifically for gems, etc
+    def __init__(self, name, weight=0, value=1000): # A type of item specifically for gems, etc
         self.name = name
-        self.weight = 0 # Negligible
+        self.weight = weight
         self.value = value
         self.props = ItemProperties("0", False, False, False, False)
         self.amount = 1
@@ -363,6 +388,7 @@ class Character(object):
         self.height = height
         self.weight = weight
         self.level = level
+        self.image = image
         self.yen = yen
 
         # Player stats
@@ -384,6 +410,14 @@ class Character(object):
     async def import_from_url(url, prns, vrbs): # Asynchronous so it can use asynchronous functions
         sheet = CharSpreadsheet(url, prns, vrbs)
         await sheet.init() # Initialise sheet
+        print(sheet.image)
+
+        image_url = sheet.image
+        async with AsyncClient() as client:
+            r = await client.get(sheet.image)
+        if r.status_code != 200:
+            image_url = "https://cdn.discordapp.com/attachments/902668029115138081/917889852962402365/Untitled121_20211207212621.jpg"
+
         return Character(
           sheet.name,
           sheet.race,
@@ -397,7 +431,7 @@ class Character(object):
           sheet.weight,
           sheet.level,
           sheet.fpm,
-          sheet.image,
+          image_url,
           sheet.stats.ty,
           SN(
             str=sheet.stats.str,
@@ -466,9 +500,6 @@ class Character(object):
             return "L"
         return "N"
 
-    def __bool__(self):
-        return True
-
 
 RARITIES = ( # Valid item rarities for DM to make new items
   "Common",
@@ -479,13 +510,22 @@ RARITIES = ( # Valid item rarities for DM to make new items
   "Artifact"
 )
 
-yaml.register_class(ItemProperties);yaml.register_class(Item);yaml.register_class(Arrow);yaml.register_class(PreciousMaterial);yaml.register_class(Inventory);yaml.register_class(Character)
+yaml.register_class(ItemProperties);yaml.register_class(Arrow);yaml.register_class(PreciousMaterial);yaml.register_class(Inventory);yaml.register_class(Character);yaml.register_class(Item)
 
-class Data(UserDict): # Subclassing UserDict (an implementation of a normal python dictionary that was *made* to be subclassed) so it can automatically load and save from files
-    def __init__(self, file, *args, **kwargs):
+class FileDict(UserDict): # Subclassing UserDict (an implementation of a normal python dictionary that was *made* to be subclassed) so it can automatically load and save from files
+    def __init__(self, init, file, *args, **kwargs):
         super().__init__(*args, **kwargs) # Initialise the superclass (UserDict) so everything is initialised
         self.lock = False
         self.file = file
+
+        # Ensures the file exists
+        try:
+            with open(self.file):
+                pass
+        except FileNotFoundError:
+            with open(self.file, 'w+') as f:
+                f.write(init)
+
         with open(self.file) as f: # Open the yaml file to load the data into the dict
             tmp = yaml.load(f)
             if tmp:
@@ -520,22 +560,42 @@ class Data(UserDict): # Subclassing UserDict (an implementation of a normal pyth
         self.force_save() # So it isn't deleted after a restart call force save
         return True # Return True to indicate success
 
-    def new_item(self, name, weight, type="I"):
+    def new_item(self, name, weight=0.05, dice=False, damage=False, health=False, non_self=False, on_self=False):
         try:
             self.data['items']
         except KeyError:
-            self.data = []
+            self.data['items'] = []
         for i in self.data['items']:
             if name.title() == i.name.title():
-                
+                return False # Return False if item is already in the list
+        props = ItemProperties(dice, damage, health, non_self, on_self)
+        self.data['items'].append(Item(name, weight, props))
+        self.force_save()
+        return True
 
+    def new_arrow(self, name, weight=0.5):
+        try:
+            self.data['arrows']
+        except KeyError:
+            self.data['arrows'] = []
+        for i in self.data['arrows']:
+            if name.title() == i.name.title():
+                return False # Return False if item is already in the list
+        self.data['arrows'].append(Arrow(name, weight))
+        self.force_save()
+        return True
 
-
-
-
-
-
-
+    def new_valuable(self, name, value=1000): # Value in Yem
+        try:
+            self.data['valuables']
+        except KeyError:
+            self.data['valuables'] = []
+        for i in self.data['valuables']:
+            if name.title() == i.name.title():
+                return False # Return False if item is already in the list
+        self.data['valuables'].append(PreciousMaterial(name, 0, value))
+        self.force_save()
+        return True
 
 
 

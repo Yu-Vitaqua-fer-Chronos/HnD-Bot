@@ -1,6 +1,7 @@
 git+https://github.com/HuyaneMatsu/Hata
 gspread_asyncio
+ruamel.yaml
+yachalk
 fastapi
 uvicorn
-ruamel.yaml
 d20
