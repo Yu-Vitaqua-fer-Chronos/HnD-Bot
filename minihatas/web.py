@@ -3,9 +3,8 @@ from subprocess import getoutput
 from typing import Optional
 
 from hata import parse_oauth2_redirect_url, USERS, BUILTIN_EMOJIS
-from scarletio import enter_executor
+from scarletio import enter_executor, AsyncIO
 from fastapi import Request, Cookie
-from fastapi.staticfiles import StaticFiles
 from starlette.responses import Response, HTMLResponse, RedirectResponse
 
 from ext.utils import Logger
@@ -18,10 +17,9 @@ msgs = []
 tick = BUILTIN_EMOJIS['white_check_mark']
 cross = BUILTIN_EMOJIS['x']
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
 with open('favicon.ico', 'rb') as f:
-    favicon_response = Response(content=f.read(), media_type=('image/x-icon'), status_code=200)
+    favicon_response = Response(content=f.read(), media_type='image/x-icon', status_code=200)
 
 @app.get('/')
 async def home(req:Request, user_id:Optional[int]=Cookie(False)):
@@ -30,6 +28,12 @@ async def home(req:Request, user_id:Optional[int]=Cookie(False)):
         response.set_cookie(key='redir', value='/', expires=360)
         return response
     return templates.TemplateResponse("index.html", {"request":req, "name":USERS.get(user_id, "Unknown").full_name})
+
+@app.get('/static/{path}')
+async def static(path:str):
+    if path.endswith('.less'):
+        async with AsyncIO('static/'+path) as f:
+            return Response(content=(await f.read()), media_type='text/css', status_code=200)
 
 @app.get('/favicon.ico', include_in_schema=False)
 async def favicon():
