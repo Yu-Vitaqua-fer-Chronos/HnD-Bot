@@ -29,7 +29,7 @@ async def home(req:Request, user_id:Optional[int]=Cookie(False)):
         return response
     return templates.TemplateResponse("index.html", {"request":req, "name":USERS.get(user_id, "Unknown").full_name})
 
-@app.get('/static/{path}')
+@app.get('/static/{path}', include_in_schema=False)
 async def static(path:str):
     if path.endswith('.less'):
         with await AsyncIO('static/'+path) as f:
@@ -62,7 +62,7 @@ async def logout(req:Request):
     response.set_cookie(key="user_id", value='', expires=1)
     return response
 
-@app.post('/github')
+@app.post('/github', include_in_schema=False)
 async def update():
     msg = await client.message_create(environ['LOGGING_CHANNEL'], "New commit pushed to GitHub! Would you like to update?")
     MIDs.append(msg.id)
