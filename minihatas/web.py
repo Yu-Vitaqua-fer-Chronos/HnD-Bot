@@ -61,6 +61,7 @@ async def update():
     msgs.append(msg)
     await client.reaction_add(msg, tick)
     await client.reaction_add(msg, cross)
+    return {}
 
 @client.events
 async def reaction_add(client, event):
