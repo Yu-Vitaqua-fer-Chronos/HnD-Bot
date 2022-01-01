@@ -59,7 +59,7 @@ async def authorised(redir:Optional[str]=Cookie('/'), code:str=None):
 @app.get('/logout')
 async def logout(req:Request):
     response = templates.TemplateResponse("logout.html", {"request":req})
-    response.delete_cookies(key="user_id")
+    response.set_cookie(key="user_id", value='', expires=1)
     return response
 
 @app.get('/github')
