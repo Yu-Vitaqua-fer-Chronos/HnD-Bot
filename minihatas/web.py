@@ -12,7 +12,7 @@ from ext.utils import Logger
 root = environ['ROOT_URL']
 url = environ['OAUTH']
 
-msgs = []
+MIDs = []
 
 tick = BUILTIN_EMOJIS['white_check_mark']
 cross = BUILTIN_EMOJIS['x']
@@ -65,7 +65,7 @@ async def logout(req:Request):
 @app.get('/github')
 async def update():
     msg = await client.message_create(environ['LOGGING_CHANNEL'], "New commit pushed to GitHub! Would you like to update?")
-    msgs.append(msg)
+    MIDs.append(msg.id)
     await client.reaction_add(msg, tick)
     await client.reaction_add(msg, cross)
     return {}
@@ -77,9 +77,9 @@ async def reaction_add(client, event):
     if not client.is_owner(event.user) and event.emoji in (tick, cross):
         await client.message_create(event.message.channel, "You don't have permission to do this!!")
         await client.reaction_remove(event.message, event.emoji, event.user)
-    if event.message.id not in msgs:
+    if event.message.id not in MIDs:
         return
-    del msgs[msgs.index(event.message.id)]
+    del MIDs[MIDs.index(event.message.id)]
     await client.reaction_clear(event.message)
     if event.emoji is tick:
         await client.message_edit(event.message, "Pulling changes from GitHub now...")
