@@ -5,6 +5,7 @@ from typing import Optional
 from hata import parse_oauth2_redirect_url, USERS, BUILTIN_EMOJIS
 from scarletio import enter_executor
 from fastapi import Request, Cookie
+from fastapi.staticfiles import StaticFiles
 from starlette.responses import Response, HTMLResponse, RedirectResponse
 
 from ext.utils import Logger
@@ -16,6 +17,8 @@ msgs = []
 
 tick = BUILTIN_EMOJIS['white_check_mark']
 cross = BUILTIN_EMOJIS['x']
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 with open('favicon.ico', 'rb') as f:
     favicon_response = Response(content=f.read(), media_type=('image/x-icon'), status_code=200)

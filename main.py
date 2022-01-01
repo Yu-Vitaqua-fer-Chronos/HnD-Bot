@@ -6,7 +6,6 @@ from hata.ext.commands_v2 import checks
 from hata.ext.extension_loader import EXTENSION_LOADER
 from uvicorn import run as run_server
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from ext.utils import FileDict
@@ -21,8 +20,6 @@ misc = FileDict("{'info':{}}", 'miscellaneous.yaml')
 
 PORT = 8080
 app = FastAPI()
-
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
 templates = Jinja2Templates(directory="templates")
 
