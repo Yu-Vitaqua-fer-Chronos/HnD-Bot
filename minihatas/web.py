@@ -75,7 +75,7 @@ async def reaction_add(client, event):
     del msgs[msgs.index(event.message.id)]
     await client.reaction_clear(event.message)
     if event.emoji is tick:
-        await client.message_edit(event.message, "Pulling changes from GitHub now..."):
+        await client.message_edit(event.message, "Pulling changes from GitHub now...")
         async with enter_executor():
             output = getoutput('git pull')
         await client.message_edit(event.message, "Done, here is the output:"+'```sh\n'+output+'```')
