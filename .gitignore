@@ -3,4 +3,5 @@ run.py
 config.yaml
 characters.yaml
 items.yaml
+miscellaneous.yaml
 **/__pycache__/
