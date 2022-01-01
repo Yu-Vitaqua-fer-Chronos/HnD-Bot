@@ -62,7 +62,7 @@ async def logout(req:Request):
     response.set_cookie(key="user_id", value='', expires=1)
     return response
 
-@app.get('/github')
+@app.post('/github')
 async def update():
     msg = await client.message_create(environ['LOGGING_CHANNEL'], "New commit pushed to GitHub! Would you like to update?")
     MIDs.append(msg.id)
