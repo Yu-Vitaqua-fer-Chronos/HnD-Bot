@@ -56,7 +56,7 @@ async def authorised(redir:Optional[str]=Cookie('/'), code:str=None):
     user = await client.user_info_get(oauth_access)
     response = RedirectResponse(url=redir)
     response.set_cookie(key='user_id', value=user.id, expires=360)
-    Logger.debug('Authorised User', user.id)
+    Logger.debug('Authorised User', user.id, '|', user.name)
     return response
 
 @app.get('/logout')
