@@ -29,14 +29,14 @@ async def home(req:Request, user_id:Optional[int]=Cookie(False)):
         return response
     return templates.TemplateResponse("index.html", {"request":req, "name":USERS.get(user_id, "Unknown").full_name})
 
-@app.get('/static/{path}', include_in_schema=False)
+@app.get('/static/{path:path}', include_in_schema=False)
 async def static(path:str):
     with await AsyncIO('static/'+path) as f:
-    if path.endswith('.less'):
-        return Response(content=(await f.read()), media_type='text/css', status_code=200)
-    elif path.endswith('.js'):
-        return Response(content=(await f.read()), media_type='text/javascript', status_code=200)
-    return Response(content=(await f.read()), media_type='text/plain', status_code=200)
+        if path.endswith('.less'):
+            return Response(content=(await f.read()), media_type='text/css', status_code=200)
+        elif path.endswith('.js'):
+            return Response(content=(await f.read()), media_type='text/javascript', status_code=200)
+        return Response(content=(await f.read()), media_type='text/plain', status_code=200)
 
 @app.get('/favicon.ico', include_in_schema=False)
 async def favicon():
