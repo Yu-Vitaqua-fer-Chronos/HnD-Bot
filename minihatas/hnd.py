@@ -55,13 +55,13 @@ async def unlink(event):
 
 
 @client.interactions(guild=guilds)
-async def overview(event, user:User=None):
-    """A brief overview of your character!"""
+async def overview(event, user:User=(None, 'View another user\'s character sheet!')):
+    """A brief overview of a character!"""
     if not user:
         user = event.user
     char = chars.get(user.id)
     if not char:
-        yield "No character sheet linked! If you are trying to run this command for yourself, link a character sheet with the command!"
+        yield "No character sheet linked! If you are trying to run this command on yourself, link a character sheet with the command!"
         return
     e = Embed(f"[__**Overview of {char.name}**__]", f"Here is a brief overview of {char.name}", color=0x224c3d, timestamp=datetime.now()).add_field("```⟩⟩⟩ Auto-generated description ⟨⟨⟨```", char.desc).add_author(user.avatar_url, f"Requested by {user.name}").add_thumbnail(char.image)
     yield e

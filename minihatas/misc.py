@@ -1,75 +1,53 @@
 from os import system
 from collections import namedtuple
 
-from hata import Role, Emoji
+from hata import Role, Emoji, ERROR_CODES
 from hata import DiscordException
 from hata.ext.extension_loader import EXTENSION_LOADER
 
+
 People = Role.precreate(902669243248697404)
 
-RoleMoji = namedtuple("RoleMoji", 'role emoji')
+RoleMoji = namedtuple("RoleMoji", 'name plural role emoji')
 
-Hero = RoleMoji(Role.precreate(925119945254240296), Emoji.precreate(925123866471333918))
-Villain = RoleMoji(Role.precreate(925119971485450292), Emoji.precreate(925123931403350097))
-Antihero = RoleMoji(Role.precreate(925119994247921705), Emoji.precreate(925127759880159322))
-Antivillain = RoleMoji(Role.precreate(925120023964569612), Emoji.precreate(925130493828136990))
-Vigilante = RoleMoji(Role.precreate(925120050657108028), Emoji.precreate(925130551097163806))
+Hero = RoleMoji('Hero', 'Heroes', Role.precreate(925119945254240296), Emoji.precreate(925123866471333918))
+Villain = RoleMoji('Villain', 'Villains', Role.precreate(925119971485450292), Emoji.precreate(925123931403350097))
+Antihero = RoleMoji('Anti-Hero', 'Anti-Heroes', Role.precreate(925119994247921705), Emoji.precreate(925127759880159322))
+Antivillain = RoleMoji('Anti-Villain', 'Anti-Villains', Role.precreate(925120023964569612), Emoji.precreate(925130493828136990))
+Vigilante = RoleMoji('Vigilante', 'Vigilantes', Role.precreate(925120050657108028), Emoji.precreate(925130551097163806))
+
+RoleMojis = (Hero, Villain, Antihero, Antivillain, Vigilante)
 
 @client.events
 async def ready(client):
     info = "===__`User Roles`__===\n"
-    try:
-        await client.reaction_add((913148168756162590, 925140179516272660), Hero.emoji)
-    except DiscordException:
-        pass
-    try:
-        await client.reaction_add((913148168756162590, 925140179516272660), Villain.emoji)
-    except DiscordException:
-        pass
-    try:
-        await client.reaction_add((913148168756162590, 925140179516272660), Antihero.emoji)
-    except DiscordException:
-        pass
-    try:
-        await client.reaction_add((913148168756162590, 925140179516272660), Antivillain.emoji)
-    except DiscordException:
-        pass
-    try:
-        await client.reaction_add((913148168756162590, 925140179516272660), Vigilante.emoji)
-    except DiscordException:
-        pass
 
-    reactors = await client.reaction_user_get_all((913148168756162590, 925140179516272660), Hero.emoji)
-    for reactor in reactors:
-        if reactor.id == client.id or Hero.role in reactor.get_guild_profile_for(guilds[0]).roles:
-            continue
-        await client.user_role_add(reactor, Hero.role, reason="User reacted to Hero")
-    info += ("  - Heroes ⟩ " + str(len(reactors) - 1) + '\n')
-    reactors = await client.reaction_user_get_all((913148168756162590, 925140179516272660), Villain.emoji)
-    for reactor in reactors:
-        if reactor.id == client.id or Villain.role in reactor.get_guild_profile_for(guilds[0]).roles:
-            continue
-        await client.user_role_add(reactor, Villain.role, reason="User reacted to Villain")
-    info += ("  - Villains ⟩ " + str(len(reactors) - 1) + '\n')
-    reactors = await client.reaction_user_get_all((913148168756162590, 925140179516272660), Antihero.emoji)
-    for reactor in reactors:
-        if reactor.id == client.id or Antihero.role in reactor.get_guild_profile_for(guilds[0]).roles:
-            continue
-        await client.user_role_add(reactor, Antihero.role, reason="User reacted to Anti-Hero")
-    info += ("  - Anti-Heroes ⟩ " + str(len(reactors) - 1) + '\n')
-    reactors = await client.reaction_user_get_all((913148168756162590, 925140179516272660), Antivillain.emoji)
-    for reactor in reactors:
-        if reactor.id == client.id or Antivillain.role in reactor.get_guild_profile_for(guilds[0]).roles:
-            continue
-        await client.user_role_add(reactor, Antivillain.role, reason="User reacted to Anti-Villain")
-    info += ("  - Anti-Villains ⟩ " + str(len(reactors) - 1) + '\n')
-    reactors = await client.reaction_user_get_all((913148168756162590, 925140179516272660), Vigilante.emoji)
-    for reactor in reactors:
-        if reactor.id == client.id or Vigilante.role in reactor.get_guild_profile_for(guilds[0]).roles:
-            continue
-        await client.user_role_add(reactor, Vigilante.role, reason="User reacted to Vigilante")
-    info += ("  - Vigilantes ⟩ " + str(len(reactors) - 1) + '\n\n')
-    info += "Note: Users can have more than one role"
+    for rolemoji in RoleMojis:
+        for user in rolemoji.role.guild.users.values():
+            if user.has_role(rolemoji.role):
+                await client.user_role_delete(user, rolemoji.role, reason="Recalculating roles")
+
+        try:
+            await client.reaction_add((913148168756162590, 925140179516272660), rolemoji.emoji)
+        except DiscordException:
+            pass
+
+        reactors = await client.reaction_user_get_all((913148168756162590, 925140179516272660), rolemoji.emoji)
+        count = 0
+        for reactor in reactors:
+            if reactor.id == client.id or reactor.has_role(rolemoji.role):
+                continue
+            count +=1
+            try:
+                await client.user_role_add(reactor, rolemoji.role, reason="User reacted to "+rolemoji.name)
+            except DiscordException as err:
+                count -= 1
+                if err.code == ERROR_CODES.unknown_member:
+                    await client.reaction_delete((902668029115138078, misc['info']['message']), rolemoji.emoji, reactor)
+                else:
+                    raise
+        info += ("  - "+rolemoji.plural+" ⟩ " + str(count) + '\n')
+    info += "\nNote: Users can have more than one role"
 
     try:
         await client.message_edit((925141885213888583, misc['info'].get('message', 0)), info)
@@ -77,9 +55,39 @@ async def ready(client):
         misc['info']['message'] = (await client.message_create(925141885213888583, info)).id
         misc.force_save()
 
+@client.events
+async def reaction_add(client, event):
+    if not event.message.id == 913148168756162590:
+        return
+
+    rolemoji = None
+    for re in RoleMojis:
+        if re.emoji.id == event.emoji.id:
+            rolemoji = re
+
+    if not rolemoji:
+        return
+
+    await client.user_role_add(user, rolemoji.role, reason="User reacted to "+rolemoji.name)
+
+@client.events
+async def reaction_delete(client, event):
+    if not event.message.id == 913148168756162590:
+        return
+
+    rolemoji = None
+    for re in RoleMojis:
+        if re.emoji.id == event.emoji.id:
+            rolemoji = re
+
+    if not rolemoji:
+        return
+
+    await client.user_role_delete(user, rolemoji.role, reason="User removed reaction from `"+rolemoji.plural+"` group")
+
 @client.interactions(guild=guilds)
 async def doing_your_mum():
-    """Test ping command"""
+    """Test command"""
     yield '***DOIN UR MOM***'
 
 @client.interactions(guild=guilds)
