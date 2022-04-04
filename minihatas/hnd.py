@@ -55,7 +55,7 @@ async def unlink(event):
 
 
 @client.interactions(guild=guilds)
-async def overview(event, user:User=(None, 'View another user\'s character sheet!')):
+async def overview(event, user:('user', 'View another user\'s character sheet!')=None):
     """A brief overview of a character!"""
     if not user:
         user = event.user

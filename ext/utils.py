@@ -8,7 +8,7 @@ from re import compile as regcompile, search as regsearch
 
 import d20
 from ruamel.yaml import YAML
-from httpx import AsyncClient
+from httpx import AsyncClient, UnsupportedProtocol
 from gspread import SpreadsheetNotFound
 from gspread.utils import fill_gaps, a1_to_rowcol
 from gspread.exceptions import APIError
@@ -57,6 +57,7 @@ class Size: # Encumbrance calc
     huge = 4
     gargantuan = 8
 
+
 class Logger(object):
     @staticmethod
     def info(name, *msg, sep=' '):
@@ -73,6 +74,7 @@ class Logger(object):
     def error(name, *msg, sep=' '):
         tmp = [str(i) for i in msg]
         print(f"[{chalk.bg_red.black('ERROR')}] {chalk.green(name)} ⟩ {sep.join(tmp)}")
+
 
 class GSheet(object): # GSheet implementation to easily access values
     def __init__(self, worksheet):
@@ -101,7 +103,7 @@ class GSheet(object): # GSheet implementation to easily access values
         if row > len(source) or col > len(source[row]):
             raise IndexError("Cell out of bounds.")
         value = source[row][col]
-        debug('Cell', f"({pos}) - ({value})")
+        Logger.debug('Cell', f"({pos}) - ({value})")
         return value
 
     def value(self, pos): # Grab the formatted value from the sheet
@@ -223,14 +225,7 @@ class CharSpreadsheet(object):
             if self.vrbsoverride:
                 self.verbs = self.vrbsoverride
 
-            self.image = self.fs.unformatted_value("BC8")
-            if ',' in self.image:
-                self.image = self.image.replace(' ', '').split(',')[0]
-            if self.image.lower().startswith('=image('):
-                self.image = self.image[7:]
-            if self.image.endswith(')'):
-                self.image = self.image[:-1]
-            self.image = self.image.replace('\"', '').replace('"', '')
+            self.image = None
 
             self.fpm = int(self.fs.value("AV12")) # How many feet they can move
             self.spm = self.fpm / 5 #    How many squares can be moved per turn, since 5 feet is 1 square
@@ -296,6 +291,7 @@ class InventoryFullError(Exception):
     pass
 
 
+@yaml.register_class
 class ItemProperties(object): # The properties an item has
     def __init__(self, dice=None, damage=False, heal=False, non_self=False, on_self=False):
         if damage and heal:
@@ -307,6 +303,7 @@ class ItemProperties(object): # The properties an item has
         self.os = on_self
 
 
+@yaml.register_class
 class Item(object):
     def __init__(self, name, weight=1, props=None, amount=1): # Weight is weight per object, in lbs
         self.name = name
@@ -336,6 +333,7 @@ class Item(object):
         return self.weight * amount
 
 
+@yaml.register_class
 class Arrow(Item):
     def __init___(self, name, weight=0.05): # Arrow weighs 0.05 lbs on it's own
         self.name = name
@@ -344,6 +342,7 @@ class Arrow(Item):
         self.amount = 1
 
 
+@yaml.register_class
 class PreciousMaterial(Item):
     def __init__(self, name, weight=0, value=1000): # A type of item specifically for gems, etc
         self.name = name
@@ -353,6 +352,7 @@ class PreciousMaterial(Item):
         self.amount = 1
 
 
+@yaml.register_class
 class Inventory(object):
     def __init__(self, limiter, weight=0, type=Item):
         self.limiter = limiter # Value for how many items can be in the inventory
@@ -368,12 +368,13 @@ class Inventory(object):
         return result
 
     def add(self, item):
-        if len(self.inv) + 1 > self.limiter:
+        if self.limiter != 0 and len(self.inv) + 1 > self.limiter:
             raise InventoryFullError("Inventory is full! Can't hold anymore items! Clear up your bag or maybe use a different inventory?")
         self.inv.append(item)
         return len(self.inv)
 
 
+@yaml.register_class
 class Character(object):
     def __init__(self, name, race, eyes, hair, age, gender, verbs, pronouns, height, weight, level, fpm, image, yen, base, mods):
         # Player desc stuff
@@ -403,19 +404,22 @@ class Character(object):
         self.bag_of_holding = Inventory(0, 15)
         self.bpa = False # Player doesn't have a backpack either
         self.boha = False # Player doesn't have bag of holding yet so don't give them access to it
-        self.gems = Inventory(6)
-        self.valuables = Inventory(7)
+        self.gems = Inventory(6, type=PreciousMaterials)
+        self.valuables = Inventory(7, type=PreciousMaterials)
 
-    @staticmethod # Not a class method and should really only be called externally
+    @staticmethod # Not a class method and should only be called externally
     async def import_from_url(url, prns, vrbs): # Asynchronous so it can use asynchronous functions
         sheet = CharSpreadsheet(url, prns, vrbs)
         await sheet.init() # Initialise sheet
         print(sheet.image)
 
         image_url = sheet.image
-        async with AsyncClient() as client:
-            r = await client.get(sheet.image)
-        if r.status_code != 200:
+        try:
+            async with AsyncClient() as client:
+                r = await client.get(sheet.image)
+            if r.status_code != 200:
+                image_url = "https://cdn.discordapp.com/attachments/902668029115138081/917889852962402365/Untitled121_20211207212621.jpg"
+        except (UnsupportedProtocol, TypeError):
             image_url = "https://cdn.discordapp.com/attachments/902668029115138081/917889852962402365/Untitled121_20211207212621.jpg"
 
         return Character(
@@ -455,9 +459,16 @@ class Character(object):
     def spm(self): # Squares per move
         return self.fpm / 5
 
-    @property # A property is read only unless otherwise specified in the class
+    # A property is read only unless otherwise specified in the class
+    # Generates a simple desc to just highlight the main features of a character
+    @property
     def desc(self):
-        return f"{self.name} {self.verbs[0]} a {self.age} year old {self.gender} level {self.level} {self.race}. {self.pronouns[0].capitalize()} {self.verbs[0]} {self.height} and weighs {self.weight}. {self.pronouns[0].capitalize()} also {self.verbs[1]} {self.hair} hair and {self.eyes} eyes." # Generates a simple desc to just highlight the main features of a character
+        return (
+            f"{self.name} {self.verbs[0]} a {self.age} year old {self.gender} level {self.level} "
+            f"{self.race}. {self.pronouns[0].capitalize()} {self.verbs[0]} {self.height} and weighs "
+            f"{self.weight}. {self.pronouns[0].capitalize()} also {self.verbs[1]} {self.hair} hair "
+            f"and {self.eyes} eyes."
+        )
 
     @property
     def inv_total_e(self):
@@ -500,7 +511,6 @@ class Character(object):
             return "L"
         return "N"
 
-
 RARITIES = ( # Valid item rarities for DM to make new items
   "Common",
   "Uncommon",
@@ -509,8 +519,6 @@ RARITIES = ( # Valid item rarities for DM to make new items
   "Legendary",
   "Artifact"
 )
-
-yaml.register_class(ItemProperties);yaml.register_class(Arrow);yaml.register_class(PreciousMaterial);yaml.register_class(Inventory);yaml.register_class(Character);yaml.register_class(Item)
 
 class FileDict(UserDict): # Subclassing UserDict (an implementation of a normal python dictionary that was *made* to be subclassed) so it can automatically load and save from files
     def __init__(self, init, file, *args, **kwargs):

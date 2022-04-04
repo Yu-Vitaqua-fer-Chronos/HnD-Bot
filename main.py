@@ -52,4 +52,5 @@ client.commands(Interpreter(globals()), name='execute', checks=[checks.owner_onl
 client.start()
 
 # Start uvicorn (Now supported by Hata!)
-run_server(app, host="0.0.0.0", port=PORT, log_level="info")
+if environ.get('WEB'):
+    run_server(app, host="0.0.0.0", port=PORT, log_level="info")

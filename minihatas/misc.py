@@ -57,7 +57,7 @@ async def ready(client):
 
 @client.events
 async def reaction_add(client, event):
-    if not event.message.id == 913148168756162590:
+    if not event.message.id == 925140179516272660:
         return
 
     rolemoji = None
@@ -68,11 +68,11 @@ async def reaction_add(client, event):
     if not rolemoji:
         return
 
-    await client.user_role_add(user, rolemoji.role, reason="User reacted to "+rolemoji.name)
+    await client.user_role_add(event.user, rolemoji.role, reason="User reacted to "+rolemoji.name)
 
 @client.events
 async def reaction_delete(client, event):
-    if not event.message.id == 913148168756162590:
+    if not event.message.id == 925140179516272660:
         return
 
     rolemoji = None
@@ -83,7 +83,7 @@ async def reaction_delete(client, event):
     if not rolemoji:
         return
 
-    await client.user_role_delete(user, rolemoji.role, reason="User removed reaction from `"+rolemoji.plural+"` group")
+    await client.user_role_delete(event.user, rolemoji.role, reason="User removed reaction from `"+rolemoji.plural+"` group")
 
 @client.interactions(guild=guilds)
 async def doing_your_mum():
